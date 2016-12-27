@@ -81,8 +81,12 @@ public static class Language {
         if (element != null) {
             var elemEnum = element.GetEnumerator();
             while (elemEnum.MoveNext()) {
-                var xmlItem = (XmlElement) elemEnum.Current;
-                strings.Add(xmlItem.GetAttribute(PARAM_STRING_ID), xmlItem.InnerText);
+                try {
+                    var xmlItem = (XmlElement) elemEnum.Current;
+                    strings.Add(xmlItem.GetAttribute(PARAM_STRING_ID), xmlItem.InnerText);
+                } catch (System.InvalidCastException) {
+                    // Probably a comment or whatever, ignore.
+                }
             }
         } else {
             Debug.LogError("The specified language does not exist: " + language);
