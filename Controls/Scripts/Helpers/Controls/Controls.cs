@@ -36,6 +36,8 @@ public interface IControlsEventListener {
 public class Controls : SingletonMonoBehaviour<Controls> {
 
     public const float LongPressActionDelay = 0.450f;
+    
+    public static readonly Vector3 DefaultPrimaryInputPosition = new Vector3(float.MaxValue, float.MaxValue, 0f);
 
     ControlsModule module;
     List<IControlsEventListener> listeners = new List<IControlsEventListener>();
@@ -107,7 +109,7 @@ public abstract class ControlsModule {
 
     public virtual Vector2 primaryInputPosition {
         get {
-            return PoolableSpawnConfig.INIT_SPAWN_POS;
+            return Controls.DefaultPrimaryInputPosition;
         }
     }
 
