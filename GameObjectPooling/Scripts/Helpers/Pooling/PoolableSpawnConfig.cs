@@ -23,20 +23,44 @@
 using UnityEngine;
 
 /// <summary>
-/// When pulling an object from the pool, it is given a specific config
-/// that a pooled object is spawned with. This is the config class
-/// with only the required parameters to spawn an object.
+/// When pulling an object from the pool, it is given a specific config that
+/// changes its properties. This is the config.
 /// </summary>
+[System.Serializable]
 public abstract class PoolableSpawnConfig {
-    
+
     /// <summary>
     /// Position at which the objects are spawned at when they are being pulled from the pool,
     /// to prevent them from showing up in front of the camera before they are prepared.
     /// </summary>
-    public static readonly Vector3 INIT_SPAWN_POS = new Vector3(-2000f, -2000f, -2000f);
+    public static readonly Vector3 INIT_SPAWN_POS = new Vector3(-2000f, -2000f, 0f);
 
-    public Vector3 position;
-    public Quaternion rotation;
+    float serializedPosX, serializedPosY, serializedPosZ;
+
+    public Vector3 position {
+        get {
+            return new Vector3(serializedPosX, serializedPosY, serializedPosZ);
+        }
+        set {
+            serializedPosX = value.x;
+            serializedPosY = value.y;
+            serializedPosZ = value.z;
+        }
+    }
+
+    float serializedRotX, serializedRotY, serializedRotZ, serializedRotW;
+
+    public Quaternion rotation {
+        get {
+            return new Quaternion(serializedRotX, serializedRotY, serializedRotZ, serializedRotW);
+        }
+        set {
+            serializedRotX = value.x;
+            serializedRotY = value.y;
+            serializedRotZ = value.z;
+            serializedRotW = value.w;
+        }
+    }
 
     public PoolableSpawnConfig(Vector3 position, Quaternion rotation) {
         this.position = position;

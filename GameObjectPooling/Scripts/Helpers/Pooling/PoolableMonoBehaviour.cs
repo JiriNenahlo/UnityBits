@@ -36,11 +36,8 @@ public abstract class PoolableMonoBehaviour<C> : MonoBehaviour where C : Poolabl
 
     /// <summary>
     /// This bool is set to false when the object is created by the pool.
-    /// Setting it via the inspector to true means that this gameObject does not belong
-    /// to a pool, but shares the same scripts as pooled ones.
-    /// 
-    /// This is useful when there are for example a lot of stars,
-    /// but only one sun (= the sun has this flag set to true).
+    /// If this is still true, it means that this script does not belong
+    /// to an object in pool, eg. it is placed in the scene on purpose, and has this flag set to true in the editor.
     /// </summary>
     public bool doesNotBelongToPool = false;
 
