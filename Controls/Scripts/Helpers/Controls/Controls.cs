@@ -35,6 +35,8 @@ public interface IControlsEventListener {
 
 public class Controls : SingletonMonoBehaviour<Controls> {
 
+    public const float LongPressActionDelay = 0.450f;
+
     ControlsModule module;
     List<IControlsEventListener> listeners = new List<IControlsEventListener>();
     public bool ignoreLongPress {

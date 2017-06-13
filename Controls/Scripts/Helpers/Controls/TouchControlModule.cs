@@ -24,7 +24,7 @@ using UnityEngine;
 
 public sealed class TouchControlModule : ControlsModule {
 
-    const float PerspectiveZoomSpeed = 0.05f;
+    public const float PerspectiveTouchZoomSpeed = 0.05f;
 
     int longPressActionUId;
     bool dragAllowed = false; // Don't call any further drag callback if longpress has already occured.
@@ -50,7 +50,7 @@ public sealed class TouchControlModule : ControlsModule {
                     dragStart = currentTouch.position;
                     manager.SendCallbacks(callback => callback.OnDragStart(dragStart));
                     prevDragPosition = dragStart;
-                    longPressActionUId = LeanTween.delayedCall(Core.LongPressActionDelay, () => {
+                    longPressActionUId = LeanTween.delayedCall(Controls.LongPressActionDelay, () => {
                         if (!manager.ignoreLongPress) {
                             manager.SendCallbacks(callback => callback.OnLongPress(dragStart));
                             dragAllowed = false;
@@ -86,7 +86,7 @@ public sealed class TouchControlModule : ControlsModule {
             float prevTouchDeltaMag = (touchZeroPrevPos - touchOnePrevPos).magnitude;
             float touchDeltaMag = (touchZero.position - touchOne.position).magnitude;
             
-            float deltaMagnitudeDiff = (prevTouchDeltaMag - touchDeltaMag) * PerspectiveZoomSpeed;
+            float deltaMagnitudeDiff = (prevTouchDeltaMag - touchDeltaMag) * PerspectiveTouchZoomSpeed;
             manager.SendCallbacks(match => match.OnZoomChanged(deltaMagnitudeDiff));
         }
     }

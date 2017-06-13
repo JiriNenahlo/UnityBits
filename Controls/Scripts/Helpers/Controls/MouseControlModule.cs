@@ -45,7 +45,7 @@ public sealed class MouseControlModule : ControlsModule {
             dragStart = Input.mousePosition;
             manager.SendCallbacks(callback => callback.OnDragStart(dragStart));
             prevDragPosition = dragStart;
-            longPressActionUId = LeanTween.delayedCall(Core.LongPressActionDelay, () => {
+            longPressActionUId = LeanTween.delayedCall(Controls.LongPressActionDelay, () => {
                 if (!manager.ignoreLongPress) {
                     manager.SendCallbacks(callback => callback.OnLongPress(dragStart));
                     dragAllowed = false;
