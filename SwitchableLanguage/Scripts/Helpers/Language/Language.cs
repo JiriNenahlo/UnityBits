@@ -49,7 +49,7 @@ public static class Language {
     private static Hashtable strings;
 
     static string GetLanguageResourcesPath(SystemLanguage language) {
-        return "Languages/" + language.ToString();
+        return "Language/" + language.ToString();
     }
 
     /// <summary>
