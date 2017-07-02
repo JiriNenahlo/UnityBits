@@ -3,6 +3,9 @@ Set of useful C# Unity engine scripts to help build a solid codebase.
 
 There are a few sets of scripts:
 
+# Controls
+Modular PC/mobile controls framework with callback-based input actions.
+
 # GameObjectPooling
 Simple and quick GameObject pooling implementation.
 
