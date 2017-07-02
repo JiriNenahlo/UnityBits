@@ -20,5 +20,9 @@ Created by Adam T. Ryder
 C# version by O. Glorieux
 Static class rework & code cleanup by Jiří Nenáhlo
 
+# ToStringBuilder
+Outputs more user-friendly indented ToString output for complicated objects.
+Supports nesting custom objects thanks to the provided interface.
+
 Common TODOs:
 - .unitypackage with all scripts
