@@ -90,6 +90,7 @@ public struct ToStringBuilder {
     void AppendObject(object value, bool skipFormatting = false) {
         if (value == null) {
             sb.Append("null");
+            return;
         }
 
         if (value is IList) {
