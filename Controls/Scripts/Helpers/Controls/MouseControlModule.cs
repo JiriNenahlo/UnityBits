@@ -23,11 +23,11 @@
 using UnityEngine;
 
 public sealed class MouseControlModule : ControlsModule {
-
-    int longPressActionUId;
-    bool dragAllowed = false; // Don't call any further drag callback if longpress has already occured.
+    
+    int mouseButtonAction = -1;
     Vector2 prevDragPosition;
     Vector2 dragStart;
+    bool hasDragged;
 
     public MouseControlModule(Controls manager)
         : base(manager) {
@@ -40,36 +40,16 @@ public sealed class MouseControlModule : ControlsModule {
     }
 
     public override void LateUpdate() {
-        if (Input.GetMouseButtonDown(0)) {
-            dragAllowed = true;
-            dragStart = Input.mousePosition;
-            manager.SendCallbacks(callback => callback.OnDragStart(dragStart));
-            prevDragPosition = dragStart;
-            longPressActionUId = LeanTween.delayedCall(Controls.LongPressActionDelay, () => {
-                if (!manager.ignoreLongPress) {
-                    manager.SendCallbacks(callback => callback.OnLongPress(dragStart));
-                    dragAllowed = false;
-                } else {
-                    manager.ignoreLongPress = false;
-                }
-            }).uniqueId;
+        HandleDragActionButton(0);
+        HandleDragActionButton(2);
+
+        // Dont mess up callbacks with two buttons pressed at once.
+        if (mouseButtonAction != -1 && !Input.GetMouseButton(0) && !Input.GetMouseButton(2)) {
+            mouseButtonAction = -1;
         }
 
-        if (Input.GetMouseButton(0) && (dragAllowed || manager.ignoreLongPress)) {
-            if ((Vector2) Input.mousePosition != prevDragPosition) {
-                prevDragPosition = Input.mousePosition;
-                LeanTween.cancel(longPressActionUId);
-                manager.SendCallbacks(callback => callback.OnDrag(dragStart, prevDragPosition));
-            }
-        }
-
-        if (Input.GetMouseButtonUp(0)) {
-            if (LeanTween.isTweening(longPressActionUId)) {
-                LeanTween.cancel(longPressActionUId);
-                manager.SendCallbacks(callback => callback.OnSelect(Input.mousePosition));
-            } else if (dragAllowed) {
-                manager.SendCallbacks(callback => callback.OnDragStop(dragStart, Input.mousePosition));
-            }
+        if (mouseButtonAction == -1 && Input.GetMouseButtonDown(1)) {
+            manager.SendCallbacks(callback => callback.OnContextualActionPerformed(Input.mousePosition));
         }
 
         float zoom = -Input.GetAxis("Mouse ScrollWheel");
@@ -78,8 +58,61 @@ public sealed class MouseControlModule : ControlsModule {
         }
     }
 
-    public override void OnDisable() {
-        LeanTween.cancel(longPressActionUId);
+    void HandleDragActionButton(int mouseButton) {
+        if (Input.GetMouseButton(mouseButton)
+                || Input.GetMouseButtonDown(mouseButton)
+                || Input.GetMouseButtonUp(mouseButton)) {
+            if (mouseButtonAction == -1) {
+                mouseButtonAction = mouseButton;
+            } else if (mouseButtonAction != mouseButton) {
+                return;
+            }
+        } else {
+            return;
+        }
+
+        if (Input.GetMouseButtonDown(mouseButton)) {
+            dragStart = Input.mousePosition;
+            hasDragged = false;
+            
+            if (mouseButton == 0) {
+                manager.SendCallbacks(callback => {
+                    callback.OnPickup(dragStart);
+                    callback.OnPreparePrimaryDragVariables(dragStart);
+                });
+            } else if (mouseButton == 2) {
+                manager.SendCallbacks(callback => callback.OnPrepareSecondaryDragVariables(dragStart));
+            }
+            prevDragPosition = dragStart;
+        }
+
+        if (Input.GetMouseButton(mouseButton)) {
+            if ((Vector2) Input.mousePosition != prevDragPosition) {
+                prevDragPosition = Input.mousePosition;
+                hasDragged = true;
+                if (mouseButton == 0) {
+                    manager.SendCallbacks(callback => callback.OnItemDragAction(dragStart, prevDragPosition));
+                    manager.SendCallbacks(callback => callback.OnPrimaryDragAction(dragStart, prevDragPosition));
+                } else if (mouseButton == 2) {
+                    manager.SendCallbacks(callback => callback.OnSecondaryDragAction(dragStart, prevDragPosition));
+                }
+            }
+        }
+
+        if (Input.GetMouseButtonUp(mouseButton)) {
+            if (!hasDragged) {
+                manager.SendCallbacks(callback => {
+                    callback.OnSelect(Input.mousePosition);
+                    callback.OnDrop(dragStart, Input.mousePosition);
+                });
+            } else {
+                if (mouseButton == 0) {
+                    manager.SendCallbacks(callback => callback.OnPrimaryDragStop(dragStart, Input.mousePosition));
+                } else if (mouseButton == 2) {
+                    manager.SendCallbacks(callback => callback.OnSecondaryDragStop(dragStart, Input.mousePosition));
+                }
+            }
+        }
     }
 
 }

@@ -24,12 +24,21 @@ using UnityEngine;
 
 public sealed class TouchControlModule : ControlsModule {
 
-    public const float PerspectiveTouchZoomSpeed = 0.05f;
+    public const float
+        PerspectiveTouchZoomSpeed = 0.0025f,
+
+        // Double tap must occur in one specific spot, this is the range toleration
+        // of how many reference canvas resolution units defined in Controls.cs.
+        // Squared.
+        DoubleTapAccuacyRadiusSqr = 9f;
 
     int longPressActionUId;
-    bool dragAllowed = false; // Don't call any further drag callback if longpress has already occured.
     Vector2 prevDragPosition;
     Vector2 dragStart;
+    Vector2 firstDoubleTapLocation = Controls.DefaultPrimaryInputPosition;
+    bool hasDragged, longPressHappened;
+    bool singleFingerActionsAllowed = true;
+    bool waitingForDoubleTap = false;
 
     public TouchControlModule(Controls manager)
         : base(manager) {
@@ -42,55 +51,107 @@ public sealed class TouchControlModule : ControlsModule {
     }
 
     public override void LateUpdate() {
-        if (Input.touchCount == 1) {
-            Touch currentTouch = Input.GetTouch(0);
-            switch (currentTouch.phase) {
+        if (Input.touchCount == 0) {
+            singleFingerActionsAllowed = true;
+        } else if (Input.touchCount == 1) {
+            Touch currTouch = Input.GetTouch(0);
+
+            if (!singleFingerActionsAllowed)
+                return;
+
+            switch (currTouch.phase) {
                 case TouchPhase.Began:
-                    dragAllowed = true;
-                    dragStart = currentTouch.position;
-                    manager.SendCallbacks(callback => callback.OnDragStart(dragStart));
+                    hasDragged = false;
+                    longPressHappened = false;
+                    dragStart = currTouch.position;
+                    manager.SendCallbacks(callback => callback.OnPreparePrimaryDragVariables(dragStart));
                     prevDragPosition = dragStart;
                     longPressActionUId = LeanTween.delayedCall(Controls.LongPressActionDelay, () => {
-                        if (!manager.ignoreLongPress) {
-                            manager.SendCallbacks(callback => callback.OnLongPress(dragStart));
-                            dragAllowed = false;
-                        } else {
-                            manager.ignoreLongPress = false;
-                        }
+                        manager.SendCallbacks(callback => callback.OnPrepareSecondaryDragVariables(dragStart));
+                        manager.SendCallbacks(callback => callback.OnPickup(dragStart));
+                        longPressHappened = true;
                     }).uniqueId;
                     break;
                 case TouchPhase.Moved:
-                    if (currentTouch.position != prevDragPosition && (dragAllowed || manager.ignoreLongPress)) {
-                        prevDragPosition = currentTouch.position;
-                        LeanTween.cancel(longPressActionUId);
-                        manager.SendCallbacks(match => match.OnDrag(dragStart, prevDragPosition));
+                    hasDragged = true;
+                    prevDragPosition = currTouch.position;
+                    LeanTween.cancel(longPressActionUId);
+                    if (longPressHappened) {
+                        manager.SendCallbacks(match => match.OnItemDragAction(dragStart, currTouch.position));
+                        manager.SendCallbacks(match => match.OnSecondaryDragAction(dragStart, currTouch.position));
+                    } else {
+                        manager.SendCallbacks(match => match.OnPrimaryDragAction(dragStart, prevDragPosition));
                     }
                     break;
                 case TouchPhase.Canceled:
                 case TouchPhase.Ended:
-                    if (LeanTween.isTweening(longPressActionUId)) {
-                        LeanTween.cancel(longPressActionUId);
-                        manager.SendCallbacks(match => match.OnSelect(currentTouch.position));
-                    } else if (dragAllowed) {
-                        manager.SendCallbacks(match => match.OnDragStop(dragStart, currentTouch.position));
-                    }
+                    EndSingleTouch(currTouch);
                     break;
             }
-        } else if (Input.touchCount > 1) {
+        } else if (Input.touchCount == 2) {
             Touch touchZero = Input.GetTouch(0);
             Touch touchOne = Input.GetTouch(1);
+
+            Vector3 touchZeroStart = Vector3.zero;
             
-            Vector2 touchZeroPrevPos = touchZero.position - touchZero.deltaPosition;
-            Vector2 touchOnePrevPos = touchOne.position - touchOne.deltaPosition;
-            
-            float prevTouchDeltaMag = (touchZeroPrevPos - touchOnePrevPos).magnitude;
-            float touchDeltaMag = (touchZero.position - touchOne.position).magnitude;
-            
-            float deltaMagnitudeDiff = (prevTouchDeltaMag - touchDeltaMag) * PerspectiveTouchZoomSpeed;
-            manager.SendCallbacks(match => match.OnZoomChanged(deltaMagnitudeDiff));
+            switch (touchOne.phase) {
+                case TouchPhase.Began:
+                    // When the other finger joins, cancel the contextual action along with other one-finger-only gestures.
+                    EndSingleTouch(touchZero);
+                    singleFingerActionsAllowed = false;
+                    break;
+                case TouchPhase.Moved:
+                    Vector2 touchZeroPrevPos = touchZero.position - touchZero.deltaPosition;
+                    Vector2 touchOnePrevPos = touchOne.position - touchOne.deltaPosition;
+
+                    float prevTouchDeltaMag = (touchZeroPrevPos - touchOnePrevPos).magnitude;
+                    float touchDeltaMag = (touchZero.position - touchOne.position).magnitude;
+
+                    float deltaMagnitudeDiff = (prevTouchDeltaMag - touchDeltaMag) * PerspectiveTouchZoomSpeed;
+                    manager.SendCallbacks(match => match.OnZoomChanged(deltaMagnitudeDiff));
+                    break;
+                case TouchPhase.Canceled:
+                case TouchPhase.Ended:
+                    break;
+            }
         }
     }
 
+    void EndSingleTouch(Touch currTouch) {
+        LeanTween.cancel(longPressActionUId);
+        if (longPressHappened) {
+            manager.SendCallbacks(match => match.OnSecondaryDragStop(dragStart, currTouch.position));
+            manager.SendCallbacks(match => match.OnDrop(dragStart, currTouch.position));
+        } else {
+            if (hasDragged) {
+                manager.SendCallbacks(match => match.OnPrimaryDragStop(dragStart, currTouch.position));
+            } else {
+                if (!waitingForDoubleTap) {
+                    waitingForDoubleTap = true;
+                    firstDoubleTapLocation = currTouch.position;
+                    LeanTween.delayedCall(Controls.LongPressActionDelay, () => {
+                        waitingForDoubleTap = false;
+                        manager.SendCallbacks(match => match.OnSelect(currTouch.position));
+                    });
+                } else {
+                    // Don't call the double tap callback if the two touches are too far away.
+                    Vector3 accuracyRadius =
+                        ((Camera.current.ScreenToViewportPoint(currTouch.position)
+                            * Controls.ReferenceCanvasResolution)
+                        - (Camera.current.ScreenToViewportPoint(firstDoubleTapLocation)
+                            * Controls.ReferenceCanvasResolution));
+                    if (accuracyRadius.sqrMagnitude < DoubleTapAccuacyRadiusSqr) {
+                        manager.SendCallbacks(match => match.OnContextualActionPerformed(firstDoubleTapLocation));
+                    }
+                    Debug.Log("Distance: " + accuracyRadius.sqrMagnitude + " must be less than " + DoubleTapAccuacyRadiusSqr);
+
+                    firstDoubleTapLocation = Controls.DefaultPrimaryInputPosition;
+                    waitingForDoubleTap = false;
+                }
+            }
+        }
+    }
+    
     public override void OnDisable() {
         LeanTween.cancel(longPressActionUId);
     }

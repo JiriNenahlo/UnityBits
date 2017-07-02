@@ -25,26 +25,32 @@ using System.Collections.Generic;
 
 public interface IControlsEventListener {
     void OnSelect(Vector2 screenPos);
-    void OnLongPress(Vector2 screenPos);
-    void OnDragStart(Vector2 screenPos);
-    void OnDrag(Vector2 initialScreenPos, Vector2 currScreenPos);
-    void OnDragStop(Vector2 initialScreenPos, Vector2 endScreenPos);
+    void OnContextualActionPerformed(Vector2 screenPos);
+    void OnPreparePrimaryDragVariables(Vector2 screenPos);
+    void OnPrepareSecondaryDragVariables(Vector2 screenPos);
+    void OnItemDragAction(Vector2 initialScreenPos, Vector2 currScreenPos);
+    void OnPrimaryDragAction(Vector2 initialScreenPos, Vector2 currScreenPos);
+    void OnSecondaryDragAction(Vector2 initialScreenPos, Vector2 currScreenPos);
+    void OnPrimaryDragStop(Vector2 initialScreenPos, Vector2 endScreenPos);
+    void OnSecondaryDragStop(Vector2 initialScreenPos, Vector2 endScreenPos);
+    void OnPickup(Vector2 screenPos);
+    void OnDrop(Vector2 initialScreenPos, Vector2 endScreenPos);
     void OnZoomChanged(float amount);
     bool IsListeningForControlCallbacks();
 }
 
 public class Controls : SingletonMonoBehaviour<Controls> {
 
-    public const float LongPressActionDelay = 0.450f;
+    public const float
+        LongPressActionDelay = 0.450f,
+
+        // For PC/mobile calculations consistency
+        ReferenceCanvasResolution = 100f;
     
     public static readonly Vector3 DefaultPrimaryInputPosition = new Vector3(float.MaxValue, float.MaxValue, 0f);
 
     ControlsModule module;
     List<IControlsEventListener> listeners = new List<IControlsEventListener>();
-    public bool ignoreLongPress {
-        set;
-        get;
-    }
 
     public void RegisterListener(IControlsEventListener listener) {
         if (!listeners.Contains(listener)) {
@@ -62,7 +68,6 @@ public class Controls : SingletonMonoBehaviour<Controls> {
 
     public override void Awake() {
         base.Awake();
-        ignoreLongPress = false;
 #if UNITY_EDITOR
         module = new MouseControlModule(this);
 #elif UNITY_ANDROID
@@ -91,14 +96,6 @@ public class Controls : SingletonMonoBehaviour<Controls> {
     void OnDisable() {
         module.OnDisable();
     }
-
-    /// <summary>
-    /// When a custom longpress action is handled somewhere and drag needs to be registered after that longpress,
-    /// by calling this method this script will continue to send drag callbacks.
-    /// </summary>
-    public void IgnoreLongPress() {
-        ignoreLongPress = true;
-    }
 }
 
 public abstract class ControlsModule {
@@ -117,6 +114,5 @@ public abstract class ControlsModule {
     public virtual void OnEnable() { }
     public virtual void LateUpdate() { }
     public virtual void OnDisable() { }
-    public virtual void IgnoreLongPress() { }
     public virtual void StopIgnoringLongPress() { }
 }
