@@ -64,7 +64,7 @@ public abstract class Pool<T, C> where T : PoolableMonoBehaviour<C> where C : Po
 
     public T PullGameObjectFromPool(C config) {
         for (int i = 0; i < pool.Count; i++) {
-            if (!pool[i].gameObject.activeInHierarchy) {
+            if (!pool[i].gameObject.activeSelf) {
                 pool[i].gameObject.SetActive(true);
                 pool[i].Prepare(config);
                 return pool[i];
