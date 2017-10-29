@@ -35,51 +35,68 @@ public abstract class PoolableMonoBehaviour<C> : MonoBehaviour where C : Poolabl
     [HideInInspector] public C config;
 
     /// <summary>
-    /// This bool is set to false when the object is created by the pool.
-    /// If this is still true, it means that this script does not belong
-    /// to an object in pool, eg. it is placed in the scene on purpose, and has this flag set to true in the editor.
+    /// This bool is set to false if the object is meant to be included in, and created by the pool.
+    /// If this bool is true, it means that this script does not belong
+    /// to an object in pool, eg. it is placed in the scene on purpose and has to be provided with a config via other scripts.
+    /// 
+    /// Useful for static objects in the scene that share the same behaviour as those meant to be included in a pool in the first place,
+    /// for example having multiple dynamic pooled planets, but only one sun (with this flag set to true).
     /// </summary>
     public bool doesNotBelongToPool = false;
-
-    public virtual void Awake() {
-        if (doesNotBelongToPool) {
-            Prepare(GetUniqueConfig());
-        }
-    }
-
+    
     /// <summary>
     /// Called by the pool when spawned.
     /// </summary>
     /// <param name="config">Spawn properties to init the object with.</param>
     public void Prepare(C config) {
-        this.config = config;
-        OnPrepareFromConfig();
+        if (config == null)
+            return;
+
+        ChangeConfig(config);
     }
 
     /// <summary>
-    /// Called by the pool to get a config for the object not belonging to the pool.
+    /// Sets a new config and calls the appropriate methods for the object to update its state based on the new provided config properly.
+    /// Must be called explicitly for objects that do not receive any config when spawned (doesNotBelongToPool == true), as they are meant
+    /// to be explicitly put in the scene outside of the pool's influence.
     /// </summary>
-    public virtual C GetUniqueConfig() {
-        return null;
+    /// <param name="config">Config to init the object with.</param>
+    public void ChangeConfig(C config) {
+        this.config = config;
+        OnSpawn();
     }
 
     /// <summary>
     /// Implemented by each poolable objects to init properties on spawn.
     /// </summary>
-    public abstract void OnPrepareFromConfig();
+    public abstract void OnSpawn();
 
     /// <summary>
-    /// Called when an object is despawned, probably returned to pool.
+    /// Exposed for update manager implementation.
+    /// </summary>
+    public virtual void UpdateMe() { }
+
+    /// <summary>
+    /// Exposed for update manager implementation.
+    /// </summary>
+    public virtual void LateUpdateMe() { }
+
+    /// <summary>
+    /// Called by the pool when this pooled object is despawned (returned to the pool).
+    /// </summary>
+    public void OnDespawnInternal() {
+        if (config != null) {
+            OnDespawn();
+        }
+        transform.position = PoolableSpawnConfig.INIT_SPAWN_POS;
+        transform.rotation = Quaternion.identity;
+        config = null;
+    }
+
+    /// <summary>
+    /// Object is being despawned, stop & cleanup everything related to this object's current instance,
+    /// so it can be reused next time.
     /// </summary>
     public virtual void OnDespawn() { }
-
-    void OnDisable() {
-        if (!doesNotBelongToPool) {
-            OnDespawn();
-            transform.position = PoolableSpawnConfig.INIT_SPAWN_POS;
-            transform.rotation = Quaternion.identity;
-            config = null;
-        }
-    }
 
 }

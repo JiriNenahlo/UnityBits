@@ -37,7 +37,7 @@ public abstract class PoolableSpawnConfig {
 
     float serializedPosX, serializedPosY, serializedPosZ;
 
-    public Vector3 position {
+    public Vector3 Position {
         get {
             return new Vector3(serializedPosX, serializedPosY, serializedPosZ);
         }
@@ -50,7 +50,7 @@ public abstract class PoolableSpawnConfig {
 
     float serializedRotX, serializedRotY, serializedRotZ, serializedRotW;
 
-    public Quaternion rotation {
+    public Quaternion Rotation {
         get {
             return new Quaternion(serializedRotX, serializedRotY, serializedRotZ, serializedRotW);
         }
@@ -63,8 +63,8 @@ public abstract class PoolableSpawnConfig {
     }
 
     public PoolableSpawnConfig(Vector3 position, Quaternion rotation) {
-        this.position = position;
-        this.rotation = rotation;
+        this.Position = position;
+        this.Rotation = rotation;
     }
 
 }
