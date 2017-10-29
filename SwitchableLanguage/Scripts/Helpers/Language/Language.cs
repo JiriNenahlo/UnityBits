@@ -37,20 +37,20 @@ public static class Language {
     /// <summary>
     /// Fallback language if the requested system language is not found.
     /// </summary>
-    const SystemLanguage LANG_FALLBACK = SystemLanguage.English;
+    const SystemLanguage FallbackLanguage = SystemLanguage.English;
 
-    const string PARAM_STRING_ID = "name";
+    const string ParamStringId = "name";
 
     static bool init = false;
+    public static SystemLanguage currLang = FallbackLanguage;
 
     /// <summary>
     /// All the XML strings are in here.
     /// </summary>
+    private static Hashtable fallbackStrings;
     private static Hashtable strings;
 
-    static string GetLanguageResourcesPath(SystemLanguage language) {
-        return "Language/" + language.ToString();
-    }
+    static string GetLanguageResourcesPath(SystemLanguage language) { return "Language/" + language.ToString(); }
 
     /// <summary>
     /// Changes the language of strings that GetString returns.
@@ -63,36 +63,50 @@ public static class Language {
     /// <summary>
     /// Used to get the language strings from a file.
     /// </summary>
-    /// <param name="resourcesPath">Path relative to the resources folder.</param>
     /// <param name="language">Language.</param>
     static void SetLanguage(SystemLanguage language) {
+        currLang = language;
+        strings = ParseStrings(language);
+        if (language != FallbackLanguage) {
+            fallbackStrings = ParseStrings(FallbackLanguage);
+        } else {
+            Debug.LogWarning("Using fallback language as main language, there will be no fallback support.");
+        }
+    }
+
+    static Hashtable ParseStrings(SystemLanguage language) {
         XmlDocument xml = new XmlDocument();
         TextAsset textAsset = Resources.Load<TextAsset>(GetLanguageResourcesPath(language));
         if (textAsset == null) {
-            Debug.LogWarning("Loading language XML for '" + language.ToString() + "' failed, fallback to '"
-                + LANG_FALLBACK + "'.");
-            textAsset = Resources.Load<TextAsset>(GetLanguageResourcesPath(LANG_FALLBACK));
-            language = LANG_FALLBACK;
+            if (language == FallbackLanguage) {
+                throw new System.ArgumentNullException("Failed to load fallback translations!");
+            } else {
+                Debug.LogWarning("Loading language XML for '" + language.ToString() + "' failed, will be using fallback '"
+                    + FallbackLanguage + "' translations.");
+                return null;
+            }
         }
-        xml.LoadXml(textAsset.text);
 
-        strings = new Hashtable();
+        xml.LoadXml(textAsset.text);
+        Hashtable table = new Hashtable();
         var element = xml.DocumentElement[language.ToString()];
         if (element != null) {
             var elemEnum = element.GetEnumerator();
             while (elemEnum.MoveNext()) {
                 try {
                     var xmlItem = (XmlElement) elemEnum.Current;
-                    strings.Add(xmlItem.GetAttribute(PARAM_STRING_ID), xmlItem.InnerText);
+                    table.Add(xmlItem.GetAttribute(ParamStringId), xmlItem.InnerText);
                 } catch (System.InvalidCastException) {
                     // Probably a comment or whatever, ignore.
                 }
             }
         } else {
-            Debug.LogError("The specified language does not exist: " + language);
+            Debug.LogError("The specified language tag does not exist in the XML file for language " + language);
+            return null;
         }
+        return table;
     }
-
+    
     /// <summary>
     /// Access strings in the currently selected language by supplying this function with
     /// the name identifier for the string used in the XML resource.
@@ -115,13 +129,22 @@ public static class Language {
     /// <returns>String in the xml file.</returns>
     public static string GetString(string name) {
         if (!init) {
-            Debug.LogError("No language & xml file provided, string set is empty!");
-            return "";
+            Debug.LogWarning("No language & xml file provided, string set is empty!");
+            return string.Empty;
         }
 
-        if (!strings.ContainsKey(name)) {
-            Debug.LogError("The specified string does not exist: " + name);
-            return "";
+        if (name == null) {
+            Debug.LogWarning("GetString() with null argument called!");
+            return string.Empty;
+        }
+
+        if (strings == null || !strings.ContainsKey(name)) {
+            if (fallbackStrings == null || !fallbackStrings.ContainsKey(name)) {
+                Debug.LogWarning("Required string '" + name + "' does not exist even in the fallback translations!");
+                return name;
+            } else {
+                return (string) fallbackStrings[name];
+            }
         }
 
         return (string) strings[name];
