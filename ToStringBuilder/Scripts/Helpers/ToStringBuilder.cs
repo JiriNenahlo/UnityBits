@@ -55,7 +55,7 @@ public struct ToStringBuilder {
     /// <param name="indentOffset">For nested child objects to keep proper indentation.
     /// Pass the indentOffset from the interface here.</param>
     /// <returns>ToStringBuilder object for adding parameters in a chain.</returns>
-    public static ToStringBuilder Create(Type type, IToStringBuildable obj, int indentOffset = 0) {
+    public static ToStringBuilder Create(Type type, IToStringBuildable obj, int indentOffset) {
         ToStringBuilder tsb = new ToStringBuilder();
         tsb.initialIndentOffset = indentOffset;
         tsb.currIndentOffset = indentOffset;
@@ -159,5 +159,5 @@ public struct ToStringBuilder {
 /// Every object wanting to use this builder must implement this interface.
 /// </summary>
 public interface IToStringBuildable {
-    string ToIndentedString(int indentOffset);
+    string ToIndentedString(int indentOffset = 0);
 }
