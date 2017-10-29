@@ -88,6 +88,9 @@ public sealed class Controls : SingletonMonoBehaviour<Controls> {
 
     void OnEnable() { module.OnEnable(); }
 
+    /// <summary>
+    /// Exposed for update manager implementation.
+    /// </summary>
     public void UpdateMe() { module.UpdateMe(); }
 
     void OnDisable() { module.OnDisable(); }
