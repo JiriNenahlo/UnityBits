@@ -22,6 +22,7 @@
 
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.EventSystems;
 
 public interface IControlsEventListener {
     void OnSelect(Vector2 screenPos);
@@ -39,15 +40,13 @@ public interface IControlsEventListener {
     bool IsListeningForControlCallbacks();
 }
 
-public class Controls : SingletonMonoBehaviour<Controls> {
+public sealed class Controls : SingletonMonoBehaviour<Controls> {
 
-    public const float
-        LongPressActionDelay = 0.450f,
-
-        // For PC/mobile calculations consistency
-        ReferenceCanvasResolution = 100f;
+    public const float LongPressActionDelay = 0.450f;
     
-    public static readonly Vector3 DefaultPrimaryInputPosition = new Vector3(float.MaxValue, float.MaxValue, 0f);
+    public static readonly Vector3 DefaultPrimaryInputPosition = new Vector3(-float.MaxValue, -float.MaxValue, 0f);
+
+    public bool interactingWithUI = false;
 
     ControlsModule module;
     List<IControlsEventListener> listeners = new List<IControlsEventListener>();
@@ -68,34 +67,30 @@ public class Controls : SingletonMonoBehaviour<Controls> {
 
     public override void Awake() {
         base.Awake();
-#if UNITY_EDITOR
+#if UNITY_EDITOR || !MOBILE_PLATFORM
         module = new MouseControlModule(this);
 #elif UNITY_ANDROID
         module = new TouchControlModule(this);
 #endif
     }
 
-    public Vector2 primaryInputPosition {
-        get {
-            return module.primaryInputPosition;
+    public Vector2 PrimaryInputPosition { get { return module.PrimaryInputPosition; } }
+
+    public void SetPossibleInteractingWithUI(bool start) {
+        if (start) {
+            interactingWithUI = EventSystem.current.currentSelectedGameObject != null;
+        } else {
+            interactingWithUI = false;
         }
     }
 
-    void Start() {
-        module.Start();
-    }
+    void Start() { module.Start(); }
 
-    void OnEnable() {
-        module.OnEnable();
-    }
+    void OnEnable() { module.OnEnable(); }
 
-    void LateUpdate() {
-        module.LateUpdate();
-    }
+    public void UpdateMe() { module.UpdateMe(); }
 
-    void OnDisable() {
-        module.OnDisable();
-    }
+    void OnDisable() { module.OnDisable(); }
 }
 
 public abstract class ControlsModule {
@@ -104,14 +99,11 @@ public abstract class ControlsModule {
         this.manager = manager;
     }
 
-    public virtual Vector2 primaryInputPosition {
-        get {
-            return Controls.DefaultPrimaryInputPosition;
-        }
-    }
+    public virtual Vector2 PrimaryInputPosition { get { return Controls.DefaultPrimaryInputPosition; } }
 
     public virtual void Start() { }
     public virtual void OnEnable() { }
+    public virtual void UpdateMe() { }
     public virtual void LateUpdate() { }
     public virtual void OnDisable() { }
     public virtual void StopIgnoringLongPress() { }

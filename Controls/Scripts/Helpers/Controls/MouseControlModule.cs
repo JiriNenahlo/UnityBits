@@ -30,18 +30,14 @@ public sealed class MouseControlModule : ControlsModule {
     bool hasDragged;
 
     public MouseControlModule(Controls manager)
-        : base(manager) {
-    }
+        : base(manager) {  }
 
-    public override Vector2 primaryInputPosition {
-        get {
-            return Input.mousePosition;
-        }
-    }
+    public override Vector2 PrimaryInputPosition { get { return Input.mousePosition; } }
 
-    public override void LateUpdate() {
+    public override void UpdateMe() {
         HandleDragActionButton(0);
         HandleDragActionButton(2);
+        HandleDragNoButton();
 
         // Dont mess up callbacks with two buttons pressed at once.
         if (mouseButtonAction != -1 && !Input.GetMouseButton(0) && !Input.GetMouseButton(2)) {
@@ -76,6 +72,7 @@ public sealed class MouseControlModule : ControlsModule {
             hasDragged = false;
             
             if (mouseButton == 0) {
+                manager.SetPossibleInteractingWithUI(true);
                 manager.SendCallbacks(callback => {
                     callback.OnPickup(dragStart);
                     callback.OnPreparePrimaryDragVariables(dragStart);
@@ -112,6 +109,19 @@ public sealed class MouseControlModule : ControlsModule {
                     manager.SendCallbacks(callback => callback.OnSecondaryDragStop(dragStart, Input.mousePosition));
                 }
             }
+            if (mouseButton == 0) {
+                manager.SetPossibleInteractingWithUI(false);
+            }
+        }
+    }
+
+    void HandleDragNoButton() {
+        if (Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetMouseButton(2))
+            return;
+
+        if ((Vector2) Input.mousePosition != prevDragPosition) {
+            prevDragPosition = Input.mousePosition;
+            manager.SendCallbacks(callback => callback.OnItemDragAction(dragStart, prevDragPosition));
         }
     }
 
